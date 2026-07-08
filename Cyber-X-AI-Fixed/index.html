@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cyber X AI</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080d18;--surface:#0e1525;--surface2:#131d30;
+  --border:rgba(99,179,255,0.13);--accent:#3b82f6;
+  --text:#e8edf5;--muted:#6b7a96;--font:system-ui,sans-serif;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex;height:100vh;overflow:hidden;position:relative}
+#globeCanvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:0.6}
+#flyLayer{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;overflow:hidden}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;z-index:2}
+.hdr{display:flex;align-items:center;gap:10px;padding:14px 20px;background:rgba(14,21,37,0.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);flex-shrink:0}
+.logo{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 16px rgba(59,130,246,0.5);background:#060e1e;border:1px solid rgba(59,130,246,0.3);overflow:hidden;flex-shrink:0}
+.hdr-text{flex:1}
+.hdr-title{font-size:15px;font-weight:600;letter-spacing:.3px}
+.hdr-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.hdr-right{display:flex;align-items:center;gap:10px}
+.model-pill{background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.22);color:#60a5fa;font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500}
+.sdot{width:8px;height:8px;background:#22c55e;border-radius:50%;box-shadow:0 0 7px #22c55e}
+#clearBtn{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:#60a5fa;font-size:11px;padding:4px 10px;border-radius:7px;cursor:pointer;transition:background .15s;font-family:var(--font)}
+#clearBtn:hover{background:rgba(59,130,246,.22)}
+.chat{flex:1;padding:22px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:16px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.chat::-webkit-scrollbar{width:4px}
+.chat::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.msg{display:flex;gap:10px;align-items:flex-end}
+.msg.user{flex-direction:row-reverse}
+.av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;text-transform:uppercase}
+.msg.ai .av{background:#060e1e;color:#fff;box-shadow:0 0 12px rgba(59,130,246,0.45);border:1px solid rgba(59,130,246,0.3);overflow:hidden}
+.msg.user .av{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+.bbl{max-width:74%;padding:11px 15px;border-radius:15px;font-size:14px;line-height:1.65;word-break:break-word;backdrop-filter:blur(4px)}
+.msg.ai .bbl{background:rgba(14,21,37,0.88);border:1px solid var(--border);border-bottom-left-radius:4px}
+.msg.user .bbl{background:rgba(26,38,64,0.9);border:1px solid var(--border);border-bottom-right-radius:4px}
+.bbl p{margin:0 0 9px}.bbl p:last-child{margin-bottom:0}
+.bbl pre{background:#04090f;border:1px solid var(--border);border-radius:8px;padding:12px;overflow-x:auto;margin:8px 0;position:relative}
+.bbl pre code{background:none;padding:0;color:#a5b4fc;font-family:'Cascadia Code','Fira Code',monospace;font-size:13px}
+.bbl code{background:rgba(59,130,246,.13);color:#93c5fd;padding:2px 6px;border-radius:4px;font-family:'Cascadia Code','Fira Code',monospace;font-size:13px}
+.bbl strong{color:#fff;font-weight:600}
+.bbl em{color:#c4b5fd}
+.bbl ul,.bbl ol{padding-left:18px;margin:7px 0}
+.bbl li{margin-bottom:4px}
+.bbl h1,.bbl h2,.bbl h3{color:#fff;font-weight:600;margin:12px 0 6px}
+.bbl h1{font-size:17px}.bbl h2{font-size:15px}.bbl h3{font-size:14px}
+.bbl a{color:#60a5fa;text-decoration:none}.bbl a:hover{text-decoration:underline}
+.bbl blockquote{border-left:3px solid var(--accent);padding-left:12px;color:var(--muted);margin:8px 0;font-style:italic}
+.bbl hr{border:none;border-top:1px solid var(--border);margin:10px 0}
+.bbl table{width:100%;border-collapse:collapse;margin:8px 0;font-size:13px}
+.bbl th{background:rgba(59,130,246,.12);color:#93c5fd;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+.bbl td{padding:6px 10px;border:1px solid var(--border)}
+.copy-btn{position:absolute;top:7px;right:7px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.25);color:#60a5fa;font-size:11px;padding:3px 8px;border-radius:5px;cursor:pointer;font-family:var(--font);transition:background .15s,color .15s;line-height:1.4}
+.copy-btn:hover{background:rgba(59,130,246,.3)}
+.copy-btn.copied{color:#22c55e;border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.1)}
+.tag{display:inline-block;background:rgba(59,130,246,.1);color:#60a5fa;font-size:12px;padding:4px 10px;border-radius:5px;margin:4px 4px 0 0;cursor:pointer;border:1px solid rgba(59,130,246,.2);transition:background .15s,transform .1s}
+.tag:hover{background:rgba(59,130,246,.22);transform:translateY(-1px)}
+.typing-row{display:none;align-items:center;gap:10px;padding:0 20px 10px;flex-shrink:0}
+.typing-row.on{display:flex}
+.tav{width:28px;height:28px;border-radius:50%;background:#060e1e;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 12px rgba(59,130,246,0.45);border:1px solid rgba(59,130,246,0.3);overflow:hidden}
+.tbl{background:rgba(14,21,37,0.88);border:1px solid var(--border);border-radius:14px;border-bottom-left-radius:4px;padding:10px 14px;display:flex;gap:5px;align-items:center;backdrop-filter:blur(4px)}
+.d{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:bop 1.3s infinite ease-in-out}
+.d:nth-child(2){animation-delay:.2s}.d:nth-child(3){animation-delay:.4s}
+@keyframes bop{0%,60%,100%{transform:translateY(0);opacity:.35}30%{transform:translateY(-5px);opacity:1}}
+.inp-wrap{padding:13px 16px;background:rgba(14,21,37,0.85);backdrop-filter:blur(10px);border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+.inp-row{display:flex;gap:10px;align-items:flex-end}
+textarea{flex:1;min-height:44px;max-height:160px;resize:none;border:1px solid var(--border);border-radius:12px;padding:11px 14px;background:var(--surface2);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;outline:none;transition:border-color .2s;overflow-y:auto}
+textarea:focus{border-color:rgba(59,130,246,.5);box-shadow:0 0 0 3px rgba(59,130,246,.07)}
+textarea::placeholder{color:var(--muted)}
+#sb{width:44px;height:44px;border:none;border-radius:12px;background:var(--accent);color:#fff;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,transform .1s;box-shadow:0 0 12px rgba(59,130,246,0.3)}
+#sb:hover{background:#2563eb}
+#sb:active{transform:scale(.94)}
+#sb:disabled{background:var(--surface2);color:var(--muted);cursor:not-allowed;box-shadow:none}
+.char-counter{font-size:11px;color:var(--muted);text-align:right;padding-right:2px;transition:color .2s}
+.char-counter.warn{color:#f59e0b}
+.char-counter.danger{color:#f87171}
+.footer{font-size:11px;color:var(--muted);text-align:center;padding:6px;border-top:1px solid var(--border);flex-shrink:0;letter-spacing:.2px;background:rgba(14,21,37,0.85)}
+.footer span{color:var(--accent);font-weight:500}
+.err{color:#f87171;font-size:13px}
+.fly-word{position:absolute;color:#60a5fa;font-family:var(--font);font-size:13px;font-weight:500;pointer-events:none;white-space:nowrap;text-shadow:0 0 8px rgba(96,165,250,0.8),0 0 20px rgba(59,130,246,0.4);will-change:transform,opacity}
+</style>
+</head>
+<body>
+<canvas id="globeCanvas"></canvas>
+<div id="flyLayer"></div>
+
+<div class="main">
+  <div class="hdr">
+    <div class="logo">WORM_LOGO_SVG</div>
+    <div class="hdr-text">
+      <div class="hdr-title">Cyber X AI</div>
+      <div class="hdr-sub">Programming &amp; General Assistant</div>
+    </div>
+    <div class="hdr-right">
+      <div class="model-pill">claude-sonnet-4-6</div>
+      <button id="clearBtn" onclick="clearChat()" title="Clear conversation">⟳ Clear</button>
+      <div class="sdot" title="Online"></div>
+    </div>
+  </div>
+
+  <div class="chat" id="chat">
+    <div class="msg ai">
+      <div class="av">WORM_AV_SVG</div>
+      <div class="bbl">
+        👋 Hey! I'm <strong>Cyber X AI</strong> — your smart coding buddy and friendly assistant, powered by <strong>Claude Sonnet 4.6</strong>.<br><br>
+        Ask me anything — or try a quick topic:
+        <div style="margin-top:9px">
+          <span class="tag" onclick="quickAsk('Explain async/await in JavaScript with a real example')">async/await JS</span>
+          <span class="tag" onclick="quickAsk('What is a REST API and how does it work?')">REST API</span>
+          <span class="tag" onclick="quickAsk('How do I center a div in CSS? Show me all ways')">Center a div</span>
+          <span class="tag" onclick="quickAsk('Python vs JavaScript — which should I learn first and why?')">Python vs JS</span>
+          <span class="tag" onclick="quickAsk('Explain React hooks with simple examples')">React hooks</span>
+          <span class="tag" onclick="quickAsk('What is Big O notation? Give me examples')">Big O</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="typing-row" id="tr">
+    <div class="tav">WORM_AV_SVG</div>
+    <div class="tbl"><div class="d"></div><div class="d"></div><div class="d"></div></div>
+  </div>
+
+  <div class="inp-wrap">
+    <div class="inp-row">
+      <textarea id="p" placeholder="Ask a coding question or anything… (Enter to send)" rows="1"></textarea>
+      <button id="sb" onclick="send()" title="Send (Enter)">➤</button>
+    </div>
+    <div class="char-counter" id="charCounter">0 / 4000</div>
+  </div>
+  <div class="footer">Powered by <span>claude-sonnet-4-6</span> &nbsp;·&nbsp; Streaming &nbsp;·&nbsp; Shift+Enter for new line</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════
+   GLOBE WITH REAL CONTINENTS
+   Continents encoded as [lon, lat] polylines in degrees.
+   lon: -180 to +180 (east positive)
+   lat:  -90 to  +90 (north positive)
+═══════════════════════════════════════════════════════════ */
+(function(){
+  const canvas = document.getElementById('globeCanvas');
+  const ctx    = canvas.getContext('2d');
+  let W, H, cx, cy, R, angle = 0;
+
+  /* ── Continent outlines ──────────────────────────────────
+     Simplified polylines, enough to read as real landmasses */
+  const CONTINENTS = [
+
+    /* North America */
+    [[-168,72],[-140,70],[-120,75],[-85,73],[-70,63],[-55,60],[-53,47],[-66,44],
+     [-70,41],[-75,35],[-80,25],[-88,15],[-83,8],[-77,8],[-65,10],[-62,11],
+     [-63,18],[-73,20],[-78,24],[-80,30],[-85,30],[-90,29],[-97,26],[-105,23],
+     [-110,24],[-117,32],[-120,34],[-124,37],[-124,49],[-133,55],[-140,58],
+     [-145,60],[-152,58],[-155,60],[-163,65],[-168,68],[-168,72]],
+
+    /* Greenland */
+    [[-45,83],[-20,82],[-18,76],[-25,70],[-45,67],[-57,70],[-58,75],[-45,83]],
+
+    /* South America */
+    [[-80,10],[-75,12],[-62,12],[-60,7],[-50,5],[-48,0],[-35,-5],[-35,-10],
+     [-38,-15],[-40,-20],[-40,-28],[-52,-33],[-58,-38],[-62,-45],[-65,-55],
+     [-68,-55],[-70,-50],[-72,-45],[-73,-38],[-70,-30],[-70,-20],[-75,-10],
+     [-77,0],[-78,5],[-80,10]],
+
+    /* Europe */
+    [[28,70],[15,70],[10,63],[5,58],[0,51],[-5,48],[0,43],[3,43],[5,43],
+     [8,44],[12,44],[15,41],[16,38],[15,37],[15,38],[18,40],[20,38],[22,37],
+     [24,38],[26,40],[28,41],[30,43],[32,46],[30,48],[25,50],[20,54],[18,58],
+     [20,63],[25,65],[28,70]],
+
+    /* Africa */
+    [[-5,35],[0,35],[10,37],[12,33],[12,25],[15,20],[20,15],[25,12],[32,12],
+     [38,12],[42,15],[45,12],[42,10],[40,5],[40,-2],[38,-8],[35,-15],[32,-20],
+     [28,-25],[25,-33],[20,-35],[18,-34],[15,-28],[12,-20],[10,-12],[8,-5],
+     [5,5],[2,5],[0,5],[-5,5],[-10,5],[-15,10],[-15,15],[-10,20],[-8,25],
+     [-5,30],[-5,35]],
+
+    /* Asia (main body) */
+    [[30,43],[35,42],[40,42],[44,42],[50,45],[55,45],[60,52],[65,55],[70,55],
+     [75,55],[80,55],[85,52],[90,52],[95,55],[100,55],[105,52],[110,48],
+     [115,48],[120,52],[125,50],[130,50],[135,48],[140,46],[145,45],[150,48],
+     [150,52],[145,55],[140,60],[136,55],[132,50],[130,42],[125,38],[122,32],
+     [120,25],[118,22],[115,22],[110,20],[105,10],[102,5],[100,5],[98,5],
+     [97,8],[92,22],[88,22],[85,25],[80,28],[75,35],[70,37],[65,38],
+     [60,38],[55,38],[50,37],[45,38],[40,38],[35,37],[30,43]],
+
+    /* Indian subcontinent */
+    [[68,24],[72,22],[77,8],[80,10],[85,12],[80,20],[75,25],[70,25],[68,24]],
+
+    /* Southeast Asia / Indochina */
+    [[100,20],[105,20],[108,16],[108,12],[105,10],[103,5],[100,5],[98,5],
+     [97,8],[98,12],[100,15],[100,20]],
+
+    /* Japan (simplified) */
+    [[130,32],[132,33],[133,35],[135,35],[137,36],[140,38],[142,40],[143,44],
+     [141,45],[140,43],[138,38],[135,35],[132,33],[130,32]],
+
+    /* Australia */
+    [[114,-22],[118,-20],[122,-18],[128,-15],[132,-12],[136,-12],[140,-15],
+     [143,-18],[147,-20],[152,-24],[153,-28],[153,-32],[150,-37],[147,-38],
+     [144,-38],[142,-37],[138,-35],[132,-32],[126,-33],[115,-30],[113,-25],
+     [114,-22]],
+
+    /* New Zealand (South Island simplified) */
+    [[171,-45],[174,-42],[172,-40],[168,-44],[169,-46],[171,-45]],
+
+    /* Antarctica (simplified latitude band) */
+    [[-180,-72],[-120,-65],[-60,-67],[0,-70],[60,-67],[120,-65],[180,-72],
+     [180,-78],[120,-75],[60,-75],[0,-78],[-60,-75],[-120,-75],[-180,-78],
+     [-180,-72]],
+
+    /* UK / Ireland (simplified) */
+    [[-3,51],[0,51],[2,52],[0,54],[-2,56],[-4,57],[-5,58],[-3,58],[-1,56],
+     [0,53],[-1,51],[-3,51]],
+
+    /* Iceland */
+    [[-24,64],[-13,66],[-14,65],[-22,63],[-24,64]],
+
+    /* Madagascar */
+    [[44,-12],[48,-13],[50,-17],[48,-22],[44,-25],[43,-22],[43,-18],[44,-12]],
+
+    /* Sri Lanka */
+    [[80,10],[82,8],[82,6],[80,6],[80,10]],
+
+    /* Borneo */
+    [[108,5],[115,5],[117,2],[118,-1],[116,-4],[114,-4],[110,-2],[108,2],[108,5]],
+
+    /* Sumatra */
+    [[95,5],[100,5],[105,0],[106,-5],[104,-5],[100,-3],[95,2],[95,5]],
+
+    /* Philippines (Luzon) */
+    [[120,16],[122,17],[124,15],[122,12],[120,12],[119,14],[120,16]],
+
+    /* Baffin Island */
+    [[-64,62],[-74,62],[-80,68],[-75,73],[-65,73],[-61,66],[-64,62]],
+
+    /* Cuba */
+    [[-75,20],[-74,22],[-81,23],[-84,22],[-82,20],[-75,20]],
+  ];
+
+  /* Convert lon/lat degrees to 3D unit-sphere xyz */
+  function toXYZ(lon, lat){
+    const lo = lon * Math.PI / 180;
+    const la = lat * Math.PI / 180;
+    return {
+      x:  Math.cos(la) * Math.cos(lo),
+      y:  Math.sin(la),
+      z:  Math.cos(la) * Math.sin(lo)
+    };
+  }
+
+  /* Project 3D point onto canvas, rotated by angle around Y axis */
+  function project(lon, lat, ang){
+    const p = toXYZ(lon, lat);
+    // Rotate around Y
+    const cosA = Math.cos(ang), sinA = Math.sin(ang);
+    const rx =  p.x * cosA + p.z * sinA;
+    const ry =  p.y;
+    const rz = -p.x * sinA + p.z * cosA;
+    return { sx: cx + rx * R, sy: cy - ry * R, z: rz };
+  }
+
+  /* Grid lines */
+  const LAT_LINES = [-60,-30,0,30,60];
+  const LON_STEPS = 12;
+
+  function resize(){
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    cx = W / 2; cy = H / 2;
+    R  = Math.min(W, H) * 0.34;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function drawGlobe(ang){
+    ctx.clearRect(0, 0, W, H);
+
+    /* Atmosphere glow */
+    const grd = ctx.createRadialGradient(cx, cy, R*0.7, cx, cy, R*1.15);
+    grd.addColorStop(0,   'rgba(59,130,246,0.0)');
+    grd.addColorStop(0.7, 'rgba(59,130,246,0.04)');
+    grd.addColorStop(1,   'rgba(59,130,246,0.12)');
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(cx, cy, R*1.15, 0, Math.PI*2); ctx.fill();
+
+    /* Ocean fill */
+    const ocean = ctx.createRadialGradient(cx-R*0.2, cy-R*0.2, 0, cx, cy, R);
+    ocean.addColorStop(0,   'rgba(15,30,60,0.55)');
+    ocean.addColorStop(0.6, 'rgba(8,18,40,0.45)');
+    ocean.addColorStop(1,   'rgba(5,10,25,0.35)');
+    ctx.fillStyle = ocean;
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI*2); ctx.fill();
+
+    /* Outer ring */
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(59,130,246,0.25)';
+    ctx.lineWidth = 1; ctx.stroke();
+
+    /* Latitude grid */
+    LAT_LINES.forEach(lat => {
+      const la = lat * Math.PI/180;
+      const yr = cy - Math.sin(la) * R;
+      const rr = Math.cos(la) * R;
+      if(rr < 1) return;
+      ctx.beginPath();
+      ctx.ellipse(cx, yr, rr, rr*0.18, 0, 0, Math.PI*2);
+      ctx.strokeStyle = lat===0 ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.07)';
+      ctx.lineWidth = lat===0 ? 0.7 : 0.4; ctx.stroke();
+    });
+
+    /* Longitude grid */
+    for(let i=0; i<LON_STEPS; i++){
+      const lon = (i/LON_STEPS)*360 - 180;
+      const cosA = Math.cos((lon*Math.PI/180)+ang);
+      const alpha = cosA > 0 ? 0.09 : 0.03;
+      ctx.beginPath();
+      for(let step=0; step<=40; step++){
+        const lat = -90 + (step/40)*180;
+        const pt  = project(lon, lat, ang);
+        step===0 ? ctx.moveTo(pt.sx, pt.sy) : ctx.lineTo(pt.sx, pt.sy);
+      }
+      ctx.strokeStyle = `rgba(59,130,246,${alpha})`;
+      ctx.lineWidth = 0.4; ctx.stroke();
+    }
+
+    /* ── Draw continents ── */
+    CONTINENTS.forEach(poly => {
+      if(poly.length < 2) return;
+
+      /* Clip to front hemisphere: draw segment-by-segment,
+         breaking the path when crossing the limb */
+      let started = false;
+      ctx.beginPath();
+
+      for(let i=0; i<poly.length; i++){
+        const [lon, lat] = poly[i];
+        const pt = project(lon, lat, ang);
+        const visible = pt.z >= -0.05; /* slight tolerance for edges */
+
+        if(visible){
+          if(!started){ ctx.moveTo(pt.sx, pt.sy); started=true; }
+          else { ctx.lineTo(pt.sx, pt.sy); }
+        } else {
+          /* If transitioning to invisible, interpolate to the limb */
+          if(started && i > 0){
+            const [plon, plat] = poly[i-1];
+            const pp = project(plon, plat, ang);
+            if(pp.z >= -0.05){
+              /* midpoint approach to find limb crossing */
+              let mlon = (lon+plon)/2, mlat = (lat+plat)/2;
+              for(let iter=0; iter<4; iter++){
+                const mp = project(mlon, mlat, ang);
+                if(mp.z > 0){ mlon=(mlon+lon)/2; mlat=(mlat+lat)/2; }
+                else { mlon=(mlon+plon)/2; mlat=(mlat+plat)/2; }
+              }
+              const lp = project(mlon, mlat, ang);
+              ctx.lineTo(lp.sx, lp.sy);
+            }
+          }
+          started = false;
+          ctx.stroke();
+          ctx.beginPath();
+          started = false;
+        }
+      }
+      ctx.stroke();
+
+      /* Continent fill — only front-facing polygons */
+      /* Re-draw with fill for continents that are mostly visible */
+      ctx.beginPath();
+      let allVisible = true, anyVisible = false;
+      poly.forEach(([lon,lat]) => {
+        const pt = project(lon, lat, ang);
+        if(pt.z < 0) allVisible = false; else anyVisible = true;
+      });
+      if(anyVisible){
+        let fs = false;
+        poly.forEach(([lon,lat]) => {
+          const pt = project(lon, lat, ang);
+          if(pt.z >= -0.05){
+            if(!fs){ ctx.moveTo(pt.sx,pt.sy); fs=true; }
+            else ctx.lineTo(pt.sx,pt.sy);
+          }
+        });
+        if(fs){
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(25,55,110,0.35)';
+          ctx.fill();
+        }
+      }
+
+      /* Outline on top */
+      ctx.beginPath(); started=false;
+      for(let i=0; i<poly.length; i++){
+        const [lon,lat] = poly[i];
+        const pt = project(lon, lat, ang);
+        if(pt.z >= -0.05){
+          if(!started){ ctx.moveTo(pt.sx,pt.sy); started=true; }
+          else ctx.lineTo(pt.sx,pt.sy);
+        } else {
+          if(started){ ctx.stroke(); ctx.beginPath(); started=false; }
+        }
+      }
+      if(started) ctx.stroke();
+      ctx.strokeStyle = 'rgba(96,165,250,0.55)';
+      ctx.lineWidth = 0.85;
+    });
+
+    /* Specular highlight */
+    const spec = ctx.createRadialGradient(cx-R*0.35, cy-R*0.35, 0, cx-R*0.35, cy-R*0.35, R*0.6);
+    spec.addColorStop(0,   'rgba(180,210,255,0.08)');
+    spec.addColorStop(0.5, 'rgba(100,160,255,0.03)');
+    spec.addColorStop(1,   'rgba(0,0,0,0)');
+    ctx.fillStyle = spec;
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI*2); ctx.fill();
+  }
+
+  (function loop(){
+    angle += 0.0025;
+    drawGlobe(angle);
+    requestAnimationFrame(loop);
+  })();
+})();
+
+
+/* ─── Word-Fly Animation ─────────────────────────────────── */
+const flyLayer = document.getElementById('flyLayer');
+let flyActive=false, flyTimer=null;
+function getGlobeCenter(){ return {x:window.innerWidth/2, y:window.innerHeight/2}; }
+
+function spawnFlyWord(word, delay){
+  setTimeout(()=>{
+    if(!flyActive) return;
+    const {x:gx,y:gy} = getGlobeCenter();
+    const angle = Math.random()*Math.PI*2;
+    const R = Math.min(window.innerWidth,window.innerHeight)*0.34;
+    const startR = R*(0.1+Math.random()*0.35);
+    const sx = gx+Math.cos(angle)*startR, sy = gy+Math.sin(angle)*startR;
+    const tx = gx-R*0.5-Math.random()*200, ty = gy+(Math.random()-0.5)*300;
+    const el = document.createElement('span');
+    el.className='fly-word'; el.textContent=word;
+    el.style.left=sx+'px'; el.style.top=sy+'px'; el.style.opacity='0';
+    el.style.fontSize=(11+Math.random()*4)+'px';
+    flyLayer.appendChild(el);
+    const dur=700+Math.random()*500, start=performance.now();
+    function tick(now){
+      const t=Math.min((now-start)/dur,1), e=1-Math.pow(1-t,3);
+      const opac=t<0.15?t/0.15:t>0.75?(1-t)/0.25:1;
+      el.style.transform=`translate(${(sx+(tx-sx)*e)-sx}px,${(sy+(ty-sy)*e)-sy}px)`;
+      el.style.opacity=opac;
+      if(t<1) requestAnimationFrame(tick); else el.remove();
+    }
+    requestAnimationFrame(tick);
+  }, delay);
+}
+function startWordFly(){ flyActive=true; }
+function stopWordFly(){ flyActive=false; clearTimeout(flyTimer); }
+
+
+/* ─── Chat Logic ──────────────────────────────────────────── */
+const chat=document.getElementById('chat'), p=document.getElementById('p'),
+      sb=document.getElementById('sb'), tr=document.getElementById('tr'),
+      counter=document.getElementById('charCounter'), MAX=4000;
+const history=[];
+
+marked.setOptions({breaks:true,gfm:true});
+
+/* WormGPT icon SVG (avatar size) */
+const WORM_ICON = `<svg width="22" height="22" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="32" cy="32" r="30" fill="#060e1e" stroke="#1e3a5f" stroke-width="1"/>
+  <ellipse cx="32" cy="44" rx="14" ry="7" fill="#0a1f40" stroke="#2563eb" stroke-width="1.2"/>
+  <path d="M18 44 Q20 36 26 32 Q32 28 38 32 Q44 36 46 44" stroke="#3b82f6" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <path d="M22 44 Q24 38 30 35 Q36 32 40 38 Q42 42 42 44" stroke="#60a5fa" stroke-width="1" fill="none" stroke-linecap="round" opacity="0.6"/>
+  <ellipse cx="32" cy="24" rx="9" ry="8" fill="#060e1e" stroke="#2563eb" stroke-width="1.5"/>
+  <ellipse cx="28" cy="23" rx="3" ry="3.5" fill="#0f0f0f" stroke="#ef4444" stroke-width="0.8"/>
+  <ellipse cx="36" cy="23" rx="3" ry="3.5" fill="#0f0f0f" stroke="#ef4444" stroke-width="0.8"/>
+  <circle cx="28.8" cy="22.5" r="1.3" fill="#ef4444"/>
+  <circle cx="36.8" cy="22.5" r="1.3" fill="#ef4444"/>
+  <circle cx="29.2" cy="22.2" r="0.5" fill="#fca5a5"/>
+  <circle cx="37.2" cy="22.2" r="0.5" fill="#fca5a5"/>
+  <path d="M32 32 L32 35 M32 35 L29.5 38 M32 35 L34.5 38" stroke="#dc2626" stroke-width="1.2" stroke-linecap="round"/>
+  <path d="M26 20 Q28 18 30 20" stroke="#1d4ed8" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+  <path d="M34 20 Q36 18 38 20" stroke="#1d4ed8" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+  <ellipse cx="32" cy="24" rx="9" ry="8" fill="none" stroke="#3b82f6" stroke-width="0.5" opacity="0.4"/>
+</svg>`;
+
+/* Larger version for header logo */
+const WORM_LOGO = `<svg width="30" height="30" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="32" cy="32" r="30" fill="#060e1e" stroke="#1e3a5f" stroke-width="1"/>
+  <ellipse cx="32" cy="44" rx="14" ry="7" fill="#0a1f40" stroke="#2563eb" stroke-width="1.2"/>
+  <path d="M18 44 Q20 36 26 32 Q32 28 38 32 Q44 36 46 44" stroke="#3b82f6" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <path d="M22 44 Q24 38 30 35 Q36 32 40 38 Q42 42 42 44" stroke="#60a5fa" stroke-width="1" fill="none" stroke-linecap="round" opacity="0.6"/>
+  <ellipse cx="32" cy="24" rx="9" ry="8" fill="#060e1e" stroke="#2563eb" stroke-width="1.5"/>
+  <ellipse cx="28" cy="23" rx="3" ry="3.5" fill="#0f0f0f" stroke="#ef4444" stroke-width="0.8"/>
+  <ellipse cx="36" cy="23" rx="3" ry="3.5" fill="#0f0f0f" stroke="#ef4444" stroke-width="0.8"/>
+  <circle cx="28.8" cy="22.5" r="1.3" fill="#ef4444"/>
+  <circle cx="36.8" cy="22.5" r="1.3" fill="#ef4444"/>
+  <circle cx="29.2" cy="22.2" r="0.5" fill="#fca5a5"/>
+  <circle cx="37.2" cy="22.2" r="0.5" fill="#fca5a5"/>
+  <path d="M32 32 L32 35 M32 35 L29.5 38 M32 35 L34.5 38" stroke="#dc2626" stroke-width="1.2" stroke-linecap="round"/>
+  <path d="M26 20 Q28 18 30 20" stroke="#1d4ed8" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+  <path d="M34 20 Q36 18 38 20" stroke="#1d4ed8" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+  <ellipse cx="32" cy="24" rx="9" ry="8" fill="none" stroke="#3b82f6" stroke-width="0.5" opacity="0.4"/>
+</svg>`;
+
+/* Inject icons into placeholders */
+document.querySelector('.logo').innerHTML = WORM_LOGO;
+document.querySelectorAll('.av, .tav').forEach(el => { if(el.innerHTML.trim()==='WORM_AV_SVG') el.innerHTML=WORM_ICON; });
+
+p.addEventListener('input', function(){
+  this.style.height='auto';
+  this.style.height=Math.min(this.scrollHeight,160)+'px';
+  const len=this.value.length;
+  counter.textContent=len+' / '+MAX;
+  counter.className='char-counter'+(len>3800?' danger':len>3200?' warn':'');
+});
+p.addEventListener('keydown', e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();} });
+function quickAsk(text){ p.value=text; p.dispatchEvent(new Event('input')); send(); }
+
+function injectCopyButtons(bbl){
+  bbl.querySelectorAll('pre').forEach(pre=>{
+    if(pre.querySelector('.copy-btn')) return;
+    const btn=document.createElement('button');
+    btn.className='copy-btn'; btn.textContent='Copy';
+    btn.onclick=()=>{
+      const code=pre.querySelector('code');
+      navigator.clipboard.writeText(code?code.textContent:pre.textContent).then(()=>{
+        btn.textContent='✓ Copied'; btn.classList.add('copied');
+        setTimeout(()=>{ btn.textContent='Copy'; btn.classList.remove('copied'); },2000);
+      });
+    };
+    pre.appendChild(btn);
+  });
+}
+
+function clearChat(){
+  chat.innerHTML=`<div class="msg ai">
+    <div class="av">${WORM_ICON}</div>
+    <div class="bbl">
+      👋 Hey! I'm <strong>Cyber X AI</strong> — your smart coding buddy and friendly assistant, powered by <strong>Claude Sonnet 4.6</strong>.<br><br>
+      Ask me anything — or try a quick topic:
+      <div style="margin-top:9px">
+        <span class="tag" onclick="quickAsk('Explain async/await in JavaScript with a real example')">async/await JS</span>
+        <span class="tag" onclick="quickAsk('What is a REST API and how does it work?')">REST API</span>
+        <span class="tag" onclick="quickAsk('How do I center a div in CSS? Show me all ways')">Center a div</span>
+        <span class="tag" onclick="quickAsk('Python vs JavaScript — which should I learn first and why?')">Python vs JS</span>
+        <span class="tag" onclick="quickAsk('Explain React hooks with simple examples')">React hooks</span>
+        <span class="tag" onclick="quickAsk('What is Big O notation? Give me examples')">Big O</span>
+      </div>
+    </div></div>`;
+  history.length=0; stopWordFly();
+}
+
+async function send(){
+  const text=p.value.trim();
+  if(!text||sb.disabled||text.length>MAX) return;
+  const uMsg=document.createElement('div'); uMsg.className='msg user';
+  const uAv=document.createElement('div'); uAv.className='av'; uAv.textContent='U';
+  const uBbl=document.createElement('div'); uBbl.className='bbl'; uBbl.textContent=text;
+  uMsg.appendChild(uAv); uMsg.appendChild(uBbl); chat.appendChild(uMsg);
+  p.value=''; p.style.height='auto';
+  counter.textContent='0 / '+MAX; counter.className='char-counter';
+  sb.disabled=true;
+  tr.classList.add('on'); chat.scrollTop=chat.scrollHeight;
+  const msg=document.createElement('div'); msg.className='msg ai';
+  const av=document.createElement('div'); av.className='av'; av.innerHTML=WORM_ICON;
+  const bbl=document.createElement('div'); bbl.className='bbl';
+  msg.appendChild(av); msg.appendChild(bbl);
+  try {
+    const res=await fetch('/chat-stream',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:text,history})
+    });
+    if(!res.ok){ const err=await res.json().catch(()=>({error:'Server error'})); throw new Error(err.error||'Server error '+res.status); }
+    tr.classList.remove('on'); chat.appendChild(msg);
+    const reader=res.body.getReader(), decoder=new TextDecoder();
+    let raw='';
+    startWordFly();
+    while(true){
+      const {value,done}=await reader.read(); if(done) break;
+      const chunk=decoder.decode(value,{stream:true}); raw+=chunk;
+      bbl.innerHTML=marked.parse(raw); injectCopyButtons(bbl); chat.scrollTop=chat.scrollHeight;
+      chunk.split(/\s+/).filter(w=>w.replace(/[^a-zA-Z0-9]/g,'').length>1)
+           .forEach((w,i)=>spawnFlyWord(w.replace(/[*`#_\[\]]/g,''),i*55));
+    }
+    stopWordFly(); injectCopyButtons(bbl);
+    history.push({role:'user',content:text});
+    history.push({role:'assistant',content:raw});
+    if(history.length>20) history.splice(0,2);
+  } catch(err){
+    stopWordFly(); tr.classList.remove('on'); chat.appendChild(msg);
+    bbl.innerHTML=`<span class="err">⚠️ ${err.message}.<br>Make sure the backend is running: <code>node server.js</code> then open <code>http://localhost:3000</code></span>`;
+  }
+  sb.disabled=false; chat.scrollTop=chat.scrollHeight; p.focus();
+}
+</script>
+</body>
+</html>
